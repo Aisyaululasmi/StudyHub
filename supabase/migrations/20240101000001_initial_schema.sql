@@ -107,6 +107,30 @@ ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if any (for safe re-runs)
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+
+DROP POLICY IF EXISTS "Posts are viewable by everyone" ON posts;
+DROP POLICY IF EXISTS "Authenticated users can create posts" ON posts;
+DROP POLICY IF EXISTS "Users can update own posts" ON posts;
+DROP POLICY IF EXISTS "Users can delete own posts" ON posts;
+
+DROP POLICY IF EXISTS "Votes are viewable by everyone" ON votes;
+DROP POLICY IF EXISTS "Authenticated users can vote" ON votes;
+DROP POLICY IF EXISTS "Users can update own votes" ON votes;
+DROP POLICY IF EXISTS "Users can delete own votes" ON votes;
+
+DROP POLICY IF EXISTS "Comments are viewable by everyone" ON comments;
+DROP POLICY IF EXISTS "Authenticated users can create comments" ON comments;
+DROP POLICY IF EXISTS "Users can delete own comments" ON comments;
+DROP POLICY IF EXISTS "Users can update own comments" ON comments;
+
+DROP POLICY IF EXISTS "Users can view own bookmarks" ON bookmarks;
+DROP POLICY IF EXISTS "Authenticated users can create bookmarks" ON bookmarks;
+DROP POLICY IF EXISTS "Users can delete own bookmarks" ON bookmarks;
+
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
   ON profiles FOR SELECT
@@ -187,6 +211,19 @@ CREATE POLICY "Users can delete own bookmarks"
 -- =====================================================
 -- FUNCTIONS AND TRIGGERS
 -- =====================================================
+
+-- Drop existing triggers and functions (for safe re-runs)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_vote_change ON votes;
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
+DROP TRIGGER IF EXISTS update_posts_updated_at ON posts;
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
+DROP TRIGGER IF EXISTS update_posts_search_vector_trigger ON posts;
+
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.update_post_upvotes();
+DROP FUNCTION IF EXISTS public.update_updated_at();
+DROP FUNCTION IF EXISTS public.update_posts_search_vector();
 
 -- Function to auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -314,6 +351,10 @@ VALUES ('post-files', 'post-files', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies
+DROP POLICY IF EXISTS "Public can view post files" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload post files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own post files" ON storage.objects;
+
 CREATE POLICY "Public can view post files"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'post-files');
