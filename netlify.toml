@@ -9,19 +9,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[dev]
-  command = "npm run dev"
-  port = 3000
-  publish = ".next"
-  targetPort = 3000
-
-# Redirect rules for Next.js
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/server"
-  status = 200
-  force = false
-
 # Headers for better security and performance
 [[headers]]
   for = "/*"
