@@ -38,15 +38,7 @@ CREATE TABLE IF NOT EXISTS posts (
   upvotes INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  search_vector TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('english',
-      COALESCE(title, '') || ' ' ||
-      COALESCE(description, '') || ' ' ||
-      COALESCE(mata_kuliah, '') || ' ' ||
-      COALESCE(jurusan, '') || ' ' ||
-      COALESCE(array_to_string(tags, ' '), '')
-    )
-  ) STORED
+  search_vector TSVECTOR
 );
 
 -- Votes table
@@ -88,7 +80,6 @@ CREATE INDEX IF NOT EXISTS idx_posts_mata_kuliah ON posts(mata_kuliah);
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_type ON posts(type);
-CREATE INDEX IF NOT EXISTS idx_posts_search_vector ON posts USING GIN(search_vector);
 
 -- Votes indexes
 CREATE INDEX IF NOT EXISTS idx_votes_post_id ON votes(post_id);
@@ -290,6 +281,29 @@ CREATE TRIGGER update_comments_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at();
 
+-- Function to update search vector
+CREATE OR REPLACE FUNCTION public.update_posts_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+    setweight(to_tsvector('english', COALESCE(NEW.mata_kuliah, '')), 'C') ||
+    setweight(to_tsvector('english', COALESCE(NEW.jurusan, '')), 'C') ||
+    setweight(to_tsvector('english', COALESCE(array_to_string(NEW.tags, ' '), '')), 'D');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to update search vector on insert and update
+CREATE TRIGGER update_posts_search_vector_trigger
+  BEFORE INSERT OR UPDATE ON posts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_posts_search_vector();
+
+-- Create GIN index for search vector (after trigger)
+CREATE INDEX IF NOT EXISTS idx_posts_search_vector ON posts USING GIN(search_vector);
+
 -- =====================================================
 -- STORAGE
 -- =====================================================
@@ -356,7 +370,7 @@ BEGIN
   FROM posts p
   WHERE
     -- Text search
-    (search_query IS NULL OR p.search_vector @@ plainto_tsquery('english', search_query))
+    (search_query IS NULL OR p.search_vector @@ plainto_tsquery(search_query))
     -- Filter by jurusan
     AND (search_jurusan IS NULL OR p.jurusan = search_jurusan)
     -- Filter by type
