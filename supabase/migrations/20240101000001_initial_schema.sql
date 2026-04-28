@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS posts (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   search_vector TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('indonesian',
+    to_tsvector('english',
       COALESCE(title, '') || ' ' ||
       COALESCE(description, '') || ' ' ||
       COALESCE(mata_kuliah, '') || ' ' ||
@@ -356,7 +356,7 @@ BEGIN
   FROM posts p
   WHERE
     -- Text search
-    (search_query IS NULL OR p.search_vector @@ to_tsquery('indonesian', search_query))
+    (search_query IS NULL OR p.search_vector @@ plainto_tsquery('english', search_query))
     -- Filter by jurusan
     AND (search_jurusan IS NULL OR p.jurusan = search_jurusan)
     -- Filter by type
